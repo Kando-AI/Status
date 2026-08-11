@@ -1,0 +1,119 @@
+{
+  "version": 1,
+  "generatedAt": "2026-07-27T12:00:00.000Z",
+  "incidents": [
+    {
+      "number": 13,
+      "title": "支付网关及其全部下游依赖服务大面积不可用导致所有API请求持续超时且重试风暴放大了故障影响范围AnExtremelyLongIncidentTitleWithoutAnySpacesToStressTestTheLayoutRenderingBehaviorOfTheStatusPage",
+      "monitorId": "local-ok",
+      "stage": "identified",
+      "startedAt": "2026-07-27T18:30:00.000Z",
+      "resolvedAt": null,
+      "durationMinutes": null,
+      "updates": [
+        {
+          "at": "2026-07-27T18:30:00.000Z",
+          "author": "status-bot",
+          "kind": "opened",
+          "body": "**Local OK** (`local-ok`) is down.\n\n- Started at: 2026-07-27T18:30:00Z (UTC)\n- Reason: `timeout`\n- Run: 1234999",
+          "stage": "investigating"
+        },
+        {
+          "at": "2026-07-27T18:45:00.000Z",
+          "author": "maintainer",
+          "kind": "comment",
+          "body": "详细排查记录见内部文档 https://internal.example.com/runbooks/payment-gateway/incident-response/2026-07-27/extremely-long-unbroken-url-that-should-wrap-instead-of-overflowing-the-timeline-container?trace=abcdef1234567890abcdef1234567890&span=00f067aa0ba902b7 我们已定位到支付网关连接池在高并发下的死锁问题,正在分批重启实例并观察恢复情况,预计三十分钟内完成全部节点的滚动替换。"
+        }
+      ]
+    },
+    {
+      "number": 12,
+      "title": "Elevated error rates on Local OK",
+      "monitorId": "local-ok",
+      "stage": "resolved",
+      "startedAt": "2026-07-22T09:12:00.000Z",
+      "resolvedAt": "2026-07-22T09:57:00.000Z",
+      "durationMinutes": 45,
+      "updates": [
+        {
+          "at": "2026-07-22T09:12:00.000Z",
+          "author": "status-bot",
+          "kind": "opened",
+          "body": "**Local OK** (`local-ok`) is down.\n\n- Started at: 2026-07-22T09:12:00Z (UTC)\n- Reason: `http_5xx`\n- Run: 1234567",
+          "stage": "investigating"
+        },
+        {
+          "at": "2026-07-22T09:25:00.000Z",
+          "author": "maintainer",
+          "kind": "stage",
+          "body": "",
+          "stage": "identified"
+        },
+        {
+          "at": "2026-07-22T09:26:00.000Z",
+          "author": "maintainer",
+          "kind": "comment",
+          "body": "Root cause identified: database connection pool exhausted after the 09:00 deploy. Rolling back now."
+        },
+        {
+          "at": "2026-07-22T09:57:00.000Z",
+          "author": "system",
+          "kind": "resolved",
+          "body": "",
+          "stage": "resolved"
+        }
+      ]
+    },
+    {
+      "number": 7,
+      "title": "Local OK unreachable (timeout)",
+      "monitorId": "local-ok",
+      "stage": "resolved",
+      "startedAt": "2026-06-14T22:40:00.000Z",
+      "resolvedAt": "2026-06-14T23:02:00.000Z",
+      "durationMinutes": 22,
+      "updates": [
+        {
+          "at": "2026-06-14T22:40:00.000Z",
+          "author": "status-bot",
+          "kind": "opened",
+          "body": "**Local OK** (`local-ok`) is down.\n\n- Started at: 2026-06-14T22:40:00Z (UTC)\n- Reason: `timeout`\n- Run: 1230001",
+          "stage": "investigating"
+        },
+        {
+          "at": "2026-06-14T23:02:00.000Z",
+          "author": "system",
+          "kind": "resolved",
+          "body": "",
+          "stage": "resolved"
+        }
+      ]
+    }
+  ],
+  "maintenances": [
+    {
+      "number": 9,
+      "title": "Database engine upgrade",
+      "state": "completed",
+      "start": "2026-07-05T02:00:00.000Z",
+      "end": "2026-07-05T04:00:00.000Z",
+      "monitors": [
+        "local-ok"
+      ],
+      "updates": [
+        {
+          "at": "2026-07-01T08:00:00.000Z",
+          "author": "maintainer",
+          "kind": "opened",
+          "body": "<!-- Describe the maintenance for your users here. -->\n\nWe will upgrade the primary database engine. Short interruptions expected.\n\n```yaml\nmonitors:\n  - local-ok\nstart: 2026-07-05T02:00:00Z\nend: 2026-07-05T04:00:00Z\n```"
+        },
+        {
+          "at": "2026-07-05T03:10:00.000Z",
+          "author": "maintainer",
+          "kind": "comment",
+          "body": "Window extended by 30 minutes — replication is taking longer than expected. New ETA 04:30 UTC."
+        }
+      ]
+    }
+  ]
+}

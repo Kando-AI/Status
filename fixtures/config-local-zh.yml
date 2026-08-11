@@ -1,0 +1,11 @@
+# 中文界面构建 fixture(TC-028;仅构建用,无需探测)
+site:
+  title: 本地状态页(中文)
+  description: 中文界面渲染验证
+  lang: zh
+
+monitors:
+  - name: Local OK
+    id: local-ok
+    group: Local
+    target: http://localhost:19080/ok

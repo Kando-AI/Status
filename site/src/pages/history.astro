@@ -1,0 +1,118 @@
+---
+import Base from '../layouts/Base.astro'
+import { loadSiteData } from '../lib/data'
+import { cleanIssueBody, fmtDuration, fmtMonth, fmtTimeUtc, fmtWeekday } from '../lib/format'
+import { getStrings } from '../lib/i18n'
+
+const data = await loadSiteData()
+const s = getStrings(data.lang)
+const base = import.meta.env.BASE_URL
+
+type Entry = {
+  number: number
+  title: string
+  at: string
+  tone: 'down' | 'warn' | 'maint'
+  meta: string
+  excerpt: string
+}
+// 摘要 = 最新一条「清洗后仍有正文」的更新的首个文字行(先剥 HTML 注释/yaml 围栏,再剥 Markdown 记号)
+const latestBody = (updates: Array<{ body: string }>) => {
+  const body = [...updates]
+    .reverse()
+    .map((u) => cleanIssueBody(u.body))
+    .find(Boolean) ?? ''
+  const line = body
+    .split('\n')
+    .map((s) => s.trim())
+    .find((s) => s && !s.startsWith('- ') && !s.startsWith('_'))
+  return (line ?? '').replace(/\*\*|__|`/g, '')
+}
+
+const entries: Entry[] = [
+  ...data.incidents.incidents.map((i) => ({
+    number: i.number,
+    title: i.title,
+    at: i.startedAt,
+    tone: (i.stage === 'resolved' ? 'warn' : 'down') as Entry['tone'],
+    meta:
+      i.stage === 'resolved'
+        ? `${s.resolvedWord} · ${i.durationMinutes !== null ? fmtDuration(i.durationMinutes, data.lang) : '—'} · ${
+            data.monitors.find((m) => m.id === i.monitorId)?.name ?? i.monitorId
+          }`
+        : `${s.stageText[i.stage]} · ${data.monitors.find((m) => m.id === i.monitorId)?.name ?? i.monitorId}`,
+    excerpt: latestBody(i.updates),
+  })),
+  ...data.incidents.maintenances
+    .filter((m) => m.state !== 'cancelled')
+    .map((m) => ({
+      number: m.number,
+      title: m.title,
+      at: m.start,
+      tone: 'maint' as const,
+      meta: `${m.state === 'scheduled' ? s.scheduledWord : m.state === 'active' ? s.inProgress : s.completedWord} · ${m.monitors
+        .map((id) => data.monitors.find((x) => x.id === id)?.name ?? id)
+        .join(', ')}`,
+      excerpt: latestBody(m.updates),
+    })),
+].sort((a, b) => b.at.localeCompare(a.at))
+
+// 月 → 日(UTC)两级分组
+const byMonth = new Map<string, Map<string, Entry[]>>()
+for (const e of entries) {
+  const month = e.at.slice(0, 7)
+  const day = e.at.slice(0, 10)
+  if (!byMonth.has(month)) byMonth.set(month, new Map())
+  const days = byMonth.get(month)!
+  days.set(day, [...(days.get(day) ?? []), e])
+}
+const weekday = (day: string) => fmtWeekday(day, data.lang)
+---
+
+<Base
+  title={`${s.historyTitle} — ${data.site.title}`}
+  siteTitle={data.site.title}
+  repoUrl={data.repoUrl}
+  rawStatusUrl={data.rawStatusUrl}
+  s={s}
+  logo={data.logo}
+>
+  <h1 class="type-title mb-1">{s.historyTitle}</h1>
+  <p class="mb-10 text-[0.875rem] text-muted">{s.historySubtitle}</p>
+
+  {
+    entries.length === 0 ? (
+      <p class="py-10 text-[0.875rem] text-muted">{s.historyEmpty}</p>
+    ) : (
+      [...byMonth.entries()].map(([month, days]) => (
+        <section class="mb-12" aria-label={fmtMonth(month, data.lang)}>
+          <h2 class="type-caption mb-6 font-semibold uppercase tracking-[0.08em]">{fmtMonth(month, data.lang)}</h2>
+          <div class="divide-y divide-line">
+            {[...days.entries()].map(([day, list]) => (
+              <div class="grid grid-cols-[3.25rem_1fr] gap-x-4 py-7 first:pt-0 sm:gap-x-8">
+                <div class="text-center leading-tight">
+                  <p class="tnum text-[1.25rem] font-semibold">{Number(day.slice(8, 10))}</p>
+                  <p class="text-[0.75rem] text-faint">{weekday(day)}</p>
+                </div>
+                <div class="min-w-0 space-y-7">
+                  {list.map((e) => (
+                    <article class="entry-rule" data-tone={e.tone}>
+                      <div class="flex items-baseline justify-between gap-4">
+                        <a href={`${base}incidents/${e.number}/`} class="min-w-0 wrap-any text-[0.9375rem] font-semibold no-underline hover:underline">
+                          {e.title}
+                        </a>
+                        <span class="tnum flex-none text-[0.8125rem] text-faint">{fmtTimeUtc(e.at)}</span>
+                      </div>
+                      {e.excerpt && <p class="mt-1 line-clamp-2 wrap-any text-[0.875rem] text-muted">{e.excerpt}</p>}
+                      <p class="mt-1 text-[0.75rem] text-faint">{e.meta}</p>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ))
+    )
+  }
+</Base>

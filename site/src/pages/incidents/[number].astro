@@ -1,0 +1,95 @@
+---
+import Base from '../../layouts/Base.astro'
+import { loadSiteData } from '../../lib/data'
+import { cleanIssueBody, fmtDuration, fmtUtc } from '../../lib/format'
+import { getStrings } from '../../lib/i18n'
+import type { IncidentUpdate } from '@butus/schema'
+
+export async function getStaticPaths() {
+  const data = await loadSiteData()
+  return [
+    ...data.incidents.incidents.map((i) => ({ params: { number: String(i.number) } })),
+    ...data.incidents.maintenances.map((m) => ({ params: { number: String(m.number) } })),
+  ]
+}
+
+const data = await loadSiteData()
+const s = getStrings(data.lang)
+const base = import.meta.env.BASE_URL
+const number = Number(Astro.params.number)
+const incident = data.incidents.incidents.find((i) => i.number === number) ?? null
+const maintenance = incident ? null : data.incidents.maintenances.find((m) => m.number === number)!
+const title = incident?.title ?? maintenance!.title
+const monitorName = (id: string) => data.monitors.find((m) => m.id === id)?.name ?? id
+
+// 正文展示前清洗(HTML 注释/yaml 元数据不给访客看);维护页与事故页文案、配色分开(审核二 #2/#5/#12)
+const updates = [...(incident?.updates ?? maintenance!.updates)]
+  .reverse()
+  .map((u: IncidentUpdate) => ({ ...u, cleanBody: cleanIssueBody(u.body) }))
+const isMaintenancePage = !incident
+const chip = incident
+  ? incident.stage === 'resolved'
+    ? { text: s.resolvedWord, cls: 'text-ok' }
+    : { text: s.stageText[incident.stage]!, cls: 'text-down' }
+  : maintenance!.state === 'active'
+    ? { text: s.chipMaintInProgress, cls: 'text-maint' }
+    : maintenance!.state === 'scheduled'
+      ? { text: s.chipMaintScheduled, cls: 'text-maint' }
+      : maintenance!.state === 'cancelled'
+        ? { text: s.chipMaintCancelled, cls: 'text-muted' }
+        : { text: s.chipMaintCompleted, cls: 'text-muted' }
+---
+
+<Base title={`${title} — ${data.site.title}`} siteTitle={data.site.title} repoUrl={data.repoUrl} rawStatusUrl={data.rawStatusUrl} s={s} logo={data.logo}>
+  <p class="mb-3 text-[0.8125rem]"><a href={base} class="text-muted underline hover:text-ink">{s.backToStatus}</a></p>
+  <h1 class="type-title wrap-any mb-2">{title}</h1>
+  <p class="mb-8 flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.8125rem] text-muted">
+    <span class={`font-semibold ${chip.cls}`}>{chip.text}</span>
+    {incident && <span>{s.affected} {monitorName(incident.monitorId)}</span>}
+    {maintenance && <span>{s.affected} {maintenance.monitors.map(monitorName).join(', ')}</span>}
+    {incident && (
+      <span>
+        <time data-local datetime={incident.startedAt}>{fmtUtc(incident.startedAt)}</time>
+        {incident.resolvedAt && <> → <time data-local datetime={incident.resolvedAt}>{fmtUtc(incident.resolvedAt)}</time></>}
+        {incident.durationMinutes !== null && <> · {fmtDuration(incident.durationMinutes, data.lang)}</>}
+      </span>
+    )}
+    {maintenance && (
+      <span>
+        <time data-local datetime={maintenance.start}>{fmtUtc(maintenance.start)}</time> →
+        <time data-local datetime={maintenance.end}>{fmtUtc(maintenance.end)}</time>
+      </span>
+    )}
+    {data.repoUrl && <a href={`${data.repoUrl}/issues/${number}`} class="underline" rel="noopener">Issue #{number}</a>}
+  </p>
+
+  <h2 class="type-section mb-3">{s.timelineWord}</h2>
+  <ol class="relative ml-1.5 space-y-6 border-l border-line pl-6">
+    {
+      updates.map((u) => (
+        <li class="relative">
+          <span
+            class="absolute -left-[1.85rem] top-1 size-2.5 rounded-full border-2 border-page"
+            style={`background: var(${
+              u.kind === 'resolved' ? '--t-ok'
+              : u.kind === 'stage' ? '--t-maint'
+              : u.kind === 'opened' ? (isMaintenancePage ? '--t-maint' : '--t-down')
+              : '--t-line-strong'
+            })`}
+            aria-hidden="true"
+          />
+          <p class="text-[0.8125rem] font-semibold">
+            {u.kind === 'opened' && (isMaintenancePage ? s.nodeMaintAnnounced : s.nodeIncidentDetected)}
+            {u.kind === 'stage' && u.stage && s.stageText[u.stage]}
+            {u.kind === 'resolved' && s.resolvedWord}
+            {u.kind === 'comment' && s.nodeUpdateFrom(u.author)}
+            <span class="ml-2 font-normal text-faint">
+              <time data-local datetime={u.at}>{fmtUtc(u.at)}</time>
+            </span>
+          </p>
+          {u.cleanBody && <div class="wrap-any mt-1 whitespace-pre-wrap text-[0.875rem] text-muted">{u.cleanBody}</div>}
+        </li>
+      ))
+    }
+  </ol>
+</Base>

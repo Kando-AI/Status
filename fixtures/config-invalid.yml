@@ -1,0 +1,9 @@
+# 非法配置 fixture(TC-026):第二个监控项缺 target
+site:
+  title: Broken Config
+
+monitors:
+  - name: Fine Monitor
+    target: https://example.com
+  - name: Broken Monitor
+    group: API

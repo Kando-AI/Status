@@ -1,0 +1,73 @@
+# site.build:构建并部署状态页(docs/DESIGN.md §17)
+# 触发:checker 状态变化(workflow_call)/ 配置或源码 push / 维护者 Issue 操作 / 每小时兜底 / 手动
+name: site.build
+on:
+  workflow_call:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'status.config.yml'
+      - 'site/**'
+      - 'packages/**'
+      - '.github/workflows/site.yml'
+  issues:
+    types: [opened, edited, labeled, unlabeled, closed, reopened]
+  issue_comment:
+    types: [created, edited]
+  schedule:
+    - cron: '17 * * * *'
+
+permissions:
+  contents: read
+  issues: read
+  pages: write
+  id-token: write
+
+jobs:
+  build-deploy:
+    # Issue 事件只响应本系统的事故/维护 Issue(status-page 标签)
+    if: >-
+      (github.event_name != 'issues' && github.event_name != 'issue_comment') ||
+      contains(github.event.issue.labels.*.name, 'status-page')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # job 级并发:workflow 级并发在被 workflow_call 调用时不生效,job 级两种触发路径都串行(审查缺陷 #4)
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      # 数据在专用 data 分支(ADR-007);全新实例分支未建时按无数据渲染(overall=unknown)
+      - name: Checkout data branch
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          ref: data
+          path: data
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Validate config (REQ-014 gate)
+        run: npm run validate:config
+      - name: Schema drift gate (DESIGN §24-3)
+        run: npm run schema:gen && git diff --exit-code schema/
+      - name: Build site
+        run: npm run build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Validate API artifacts against schema (REQ-010 gate)
+        run: npm run validate:api
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/dist
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,93 @@
+---
+import type { CheckRecord, SnapshotMonitor } from '@butus/schema'
+import type { SummaryApi } from '@butus/schema'
+import { fmtDay } from '../lib/format'
+import type { Lang, Strings } from '../lib/i18n'
+import ResponseChart from './ResponseChart.tsx'
+
+interface Props {
+  monitor: { id: string; name: string }
+  snapshot: SnapshotMonitor | null
+  summary: SummaryApi['monitors'][number]
+  checks: CheckRecord[]
+  s: Strings
+  lang: Lang
+}
+const { monitor, snapshot, summary, checks, s, lang } = Astro.props
+const status = snapshot?.status ?? null
+const panelId = `panel-${monitor.id}`
+
+// 近 24h 降采样 ≤96 点(图表岛屿数据);剔除 down 样本——快速 503/超时的 ms 会扭曲趋势,口径同日汇总 avg_ms(§9)
+const dayAgo = Date.now() - 86400_000
+const recent = checks.filter((c) => Date.parse(c.t) >= dayAgo && c.ms !== null && c.o !== 'down')
+const step = Math.max(1, Math.ceil(recent.length / 96))
+const points = recent.filter((_, i) => i % step === 0).map((c) => ({ t: c.t, ms: c.ms! }))
+const values = points.map((p) => p.ms)
+const avg = values.length ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : 0
+const max = values.length ? Math.max(...values) : 0
+
+const detailFor = (d: SummaryApi['monitors'][number]['days'][number]) =>
+  d.color === 'gray'
+    ? s.barNoData
+    : d.down_minutes > 0
+      ? s.barMinDown(d.down_minutes)
+      : d.color === 'blue'
+        ? s.barMaintenance
+        : d.degraded > 0
+          ? s.barDegraded
+          : s.barNoIncidents
+---
+
+<li data-monitor={monitor.id} data-status={status ?? 'unknown'}>
+  <button
+    type="button"
+    class="row-toggle grid w-full grid-cols-[auto_1fr_auto] items-center gap-x-3 py-4 text-left sm:gap-x-4"
+    aria-expanded="false"
+    aria-controls={panelId}
+  >
+    <span class="status-dot" aria-hidden="true"></span>
+    <span class="flex min-w-0 items-baseline gap-2">
+      <span class="truncate text-[0.875rem] font-semibold">{monitor.name}</span>
+      <span class="status-label text-[0.75rem] font-medium" data-live="status-text">
+        {status ? (s.statusText[status] ?? status) : s.statusText.unknown}{
+          status === 'down' && snapshot?.reason
+            ? ` · ${s.reasonText[snapshot.reason] ?? snapshot.reason}`
+            : ''
+        }
+      </span>
+    </span>
+    <span class="flex items-center gap-3">
+      <span class="tnum text-[0.75rem] font-medium text-muted">{summary.uptimePct.toFixed(2)}%</span>
+      <svg class="row-chevron size-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 4 4 4-4 4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </span>
+    <span class="col-span-3 mt-3 flex gap-[3px]" role="img" aria-label={s.uptimeAria(summary.uptimePct.toFixed(2))}>
+      {summary.days.map((d) => (
+        <span
+          class="bar-cell"
+          data-color={d.color}
+          data-date={fmtDay(d.date, lang)}
+          data-detail={detailFor(d)}
+          aria-hidden="true"></span>
+      ))}
+    </span>
+  </button>
+  <div class="row-panel" id={panelId}>
+    <div>
+      <div class="mb-4 rounded-lg bg-surface-2 px-4 py-3">
+        <div class="mb-1.5 flex items-baseline justify-between">
+          <span class="text-[0.75rem] font-medium text-muted">{s.respTitle}</span>
+          {points.length > 1 && (
+            <span class="tnum text-[0.75rem] font-medium text-muted">{s.avgWord} {avg} ms · {s.maxWord} {max} ms</span>
+          )}
+        </div>
+        {
+          points.length > 1 ? (
+            <ResponseChart client:visible points={points} />
+          ) : (
+            <p class="py-2 text-[0.75rem] text-muted">{checks.length ? s.notEnoughTrend : s.noRespData}</p>
+          )
+        }
+      </div>
+    </div>
+  </div>
+</li>

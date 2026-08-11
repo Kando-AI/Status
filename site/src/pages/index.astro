@@ -1,0 +1,268 @@
+---
+import Base from '../layouts/Base.astro'
+import MonitorRow from '../components/MonitorRow.astro'
+import { loadSiteData, monitorStatus } from '../lib/data'
+import { fmtDuration, fmtUtc } from '../lib/format'
+import { getStrings } from '../lib/i18n'
+
+const data = await loadSiteData()
+const s = getStrings(data.lang)
+const liveI18n = {
+  statusText: s.statusText,
+  overallText: s.overallText,
+  reasonText: s.reasonText,
+  liveUpdated: s.liveUpdated,
+}
+const base = import.meta.env.BASE_URL
+const overall = data.snapshot?.overall ?? null
+const openIncidents = data.incidents.incidents.filter((i) => i.stage !== 'resolved')
+const activeMaint = data.incidents.maintenances.filter((m) => m.state === 'active')
+const scheduledMaint = data.incidents.maintenances.filter((m) => m.state === 'scheduled')
+---
+
+<Base
+  title={data.site.title}
+  description={data.site.description}
+  siteTitle={data.site.title}
+  repoUrl={data.repoUrl}
+  rawStatusUrl={data.rawStatusUrl}
+  s={s}
+  logo={data.logo}
+>
+  <h1 class="type-title mb-1">{data.site.title}</h1>
+  {data.site.description && <p class="mb-6 text-[0.875rem] text-muted">{data.site.description}</p>}
+
+  <!-- 数据滞后横幅(REQ-015;默认隐藏,脚本按新鲜度控制) -->
+  <div
+    id="stale-banner"
+    hidden
+    class="entry-rule mb-5 bg-tint-warn py-2.5 pr-4 text-[0.8125rem] text-warn"
+    data-tone="warn"
+    role="status"
+  >
+    {s.staleBanner}
+  </div>
+
+  <!-- 状态 hero(彩点 + 大字,替代实底横幅) -->
+  <section class="banner mb-10 flex items-center gap-3.5" data-overall={overall ?? 'unknown'} aria-live="polite">
+    <span class="hero-dot" aria-hidden="true"></span>
+    <div>
+      <p class="text-[1.25rem] font-semibold tracking-tight" data-live="overall-text">
+        {overall ? (s.overallText[overall] ?? overall) : s.overallText.unknown}
+      </p>
+      <p class="mt-0.5 text-[0.75rem] text-muted">
+        {s.lastChecked} <time data-live="last-checked">{data.snapshot ? fmtUtc(data.snapshot.generatedAt) : '—'}</time>
+      </p>
+    </div>
+  </section>
+
+  <!-- 进行中事故 / 维护公告(左竖线条目,无卡片) -->
+  {openIncidents.length > 0 && (
+    <section class="mb-8 space-y-4" aria-label={s.ongoingIncidents}>
+      {openIncidents.map((i) => (
+        <div class="entry-rule" data-tone="down">
+          <div class="flex items-baseline justify-between gap-4">
+            <a href={`${base}incidents/${i.number}/`} class="min-w-0 wrap-any text-[0.9375rem] font-semibold no-underline hover:underline">{i.title}</a>
+            <span class="tnum flex-none text-[0.75rem] text-faint">
+              <time data-local datetime={i.startedAt}>{fmtUtc(i.startedAt)}</time>
+            </span>
+          </div>
+          <p class="mt-0.5 text-[0.8125rem] text-down">{s.stageText[i.stage]}</p>
+        </div>
+      ))}
+    </section>
+  )}
+  {(activeMaint.length > 0 || scheduledMaint.length > 0) && (
+    <section class="mb-8 space-y-4" aria-label={s.maintenanceLabel}>
+      {[...activeMaint, ...scheduledMaint].map((m) => (
+        <div class="entry-rule" data-tone="maint">
+          <div class="flex items-baseline justify-between gap-4">
+            <a href={`${base}incidents/${m.number}/`} class="min-w-0 wrap-any text-[0.9375rem] font-semibold no-underline hover:underline">{m.title}</a>
+            <span class="flex-none text-[0.75rem] text-faint">{m.state === 'active' ? s.inProgress : s.scheduledWord}</span>
+          </div>
+          <p class="mt-0.5 text-[0.8125rem] text-muted">
+            <time data-local datetime={m.start}>{fmtUtc(m.start)}</time> → <time data-local datetime={m.end}>{fmtUtc(m.end)}</time>
+          </p>
+        </div>
+      ))}
+    </section>
+  )}
+
+  <!-- 分组监控列表(细分隔线,无卡片容器) -->
+  {data.groups.map((group) => (
+    <section class="mb-9" aria-label={group.name}>
+      <h2 class="type-caption mb-1 font-semibold uppercase tracking-[0.08em]">{group.name}</h2>
+      <ul class="divide-y divide-line border-t border-line">
+        {group.monitors.map((m) => (
+          <MonitorRow
+            monitor={m}
+            snapshot={monitorStatus(data, m.id)}
+            summary={data.summaryApi.monitors.find((s) => s.id === m.id)!}
+            checks={data.checksByMonitor.get(m.id) ?? []}
+            s={s}
+            lang={data.lang}
+          />
+        ))}
+      </ul>
+    </section>
+  ))}
+
+  <!-- 近期事故摘要 -->
+  <section class="mt-14" aria-label={s.recentIncidents}>
+    <div class="mb-4 flex items-baseline justify-between">
+      <h2 class="type-caption font-semibold uppercase tracking-[0.08em]">{s.recentIncidents}</h2>
+      <a href={`${base}history/`} class="text-[0.8125rem] text-muted no-underline hover:text-ink hover:underline">{s.fullHistory}</a>
+    </div>
+    {
+      data.incidents.incidents.length === 0 ? (
+        <p class="text-[0.875rem] text-muted">{s.noIncidents90d}</p>
+      ) : (
+        <ul class="space-y-5">
+          {data.incidents.incidents.slice(0, 5).map((i) => (
+            <li class="entry-rule" data-tone={i.stage !== 'resolved' ? 'down' : 'warn'}>
+              <div class="flex items-baseline justify-between gap-4">
+                <a href={`${base}incidents/${i.number}/`} class="min-w-0 wrap-any text-[0.875rem] font-semibold no-underline hover:underline">{i.title}</a>
+                <span class="tnum flex-none text-[0.75rem] text-faint">
+                  <time data-local datetime={i.startedAt}>{fmtUtc(i.startedAt)}</time>
+                </span>
+              </div>
+              <p class="mt-0.5 text-[0.75rem] text-muted">
+                {i.durationMinutes !== null && <>{s.lasted} {fmtDuration(i.durationMinutes, data.lang)}</>}
+                {i.stage !== 'resolved' && <span class="text-down">{s.ongoingWord}</span>}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </section>
+
+  <span slot="footer-extra" class="tnum" id="refresh-note"></span>
+  <script type="application/json" id="live-i18n" set:html={JSON.stringify(liveI18n)} />
+
+  <!-- 色条悬停浮层(单实例,JS 定位;图标随 data-tone 切换) -->
+  <div id="bar-tip" data-tone="green" aria-hidden="true">
+    <p class="tip-date"></p>
+    <p class="tip-status">
+      <svg class="tip-ico" data-ico="green" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.72-9.53a.75.75 0 0 0-1.06-1.06L9 11.06 7.34 9.4a.75.75 0 1 0-1.06 1.06l2.2 2.19c.29.3.76.3 1.06 0l4.18-4.18Z" clip-rule="evenodd"/></svg>
+      <svg class="tip-ico" data-ico="yellow" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M8.49 3.17c.67-1.16 2.35-1.16 3.02 0l6.28 10.87c.67 1.17-.17 2.62-1.51 2.62H3.72c-1.34 0-2.18-1.45-1.51-2.62L8.49 3.17ZM10 7.25c.41 0 .75.34.75.75v3a.75.75 0 0 1-1.5 0V8c0-.41.34-.75.75-.75Zm0 7.25a.9.9 0 1 0 0-1.8.9.9 0 0 0 0 1.8Z" clip-rule="evenodd"/></svg>
+      <svg class="tip-ico" data-ico="red" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm0-11.5c.41 0 .75.34.75.75v3.5a.75.75 0 0 1-1.5 0v-3.5c0-.41.34-.75.75-.75Zm0 8a.9.9 0 1 0 0-1.8.9.9 0 0 0 0 1.8Z" clip-rule="evenodd"/></svg>
+      <svg class="tip-ico" data-ico="blue" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M14.5 2.6a4.9 4.9 0 0 0-4.77 6.06L3.4 15a1.9 1.9 0 1 0 2.7 2.7l6.32-6.33A4.9 4.9 0 0 0 18.4 5.5a.6.6 0 0 0-1-.27l-2.02 2.02-1.7-.43-.43-1.7 2.02-2.02a.6.6 0 0 0-.27-1 4.9 4.9 0 0 0-.5-.1Z" clip-rule="evenodd"/></svg>
+      <svg class="tip-ico" data-ico="gray" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm-3.25-8.75a.75.75 0 0 0 0 1.5h6.5a.75.75 0 0 0 0-1.5h-6.5Z" clip-rule="evenodd"/></svg>
+      <span class="tip-text"></span>
+    </p>
+  </div>
+</Base>
+
+<script>
+  // 色条悬停浮层:跟随格子定位,视口内收敛,淡入淡出
+  const tip = document.getElementById('bar-tip')!
+  let hideTimer: ReturnType<typeof setTimeout> | undefined
+  let currentCell: HTMLElement | null = null
+  const positionTip = (cell: HTMLElement) => {
+    const r = cell.getBoundingClientRect()
+    const w = tip.offsetWidth
+    const h = tip.offsetHeight
+    tip.style.left = `${Math.min(Math.max(8, r.left + r.width / 2 - w / 2), innerWidth - w - 8)}px`
+    tip.style.top = `${r.top - h - 10}px`
+  }
+  document.addEventListener('pointerover', (e) => {
+    const cell = (e.target as Element).closest?.('.bar-cell') as HTMLElement | null
+    if (!cell) return
+    clearTimeout(hideTimer)
+    currentCell = cell
+    tip.dataset.tone = cell.dataset.color
+    tip.querySelector('.tip-date')!.textContent = cell.dataset.date ?? ''
+    tip.querySelector('.tip-text')!.textContent = cell.dataset.detail ?? ''
+    tip.classList.add('show')
+    positionTip(cell)
+  })
+  document.addEventListener('pointerout', (e) => {
+    if ((e.target as Element).closest?.('.bar-cell')) {
+      currentCell = null
+      hideTimer = setTimeout(() => tip.classList.remove('show'), 100)
+    }
+  })
+  // 滚动时跟随当前格重定位而非直接隐藏(hover 触发的自动滚动不应杀掉浮层)
+  addEventListener(
+    'scroll',
+    () => {
+      if (currentCell) positionTip(currentCell)
+      else tip.classList.remove('show')
+    },
+    { passive: true }
+  )
+
+  // 行展开/收起(aria-expanded 驱动,面板 grid-rows 过渡)
+  for (const btn of document.querySelectorAll<HTMLButtonElement>('.row-toggle')) {
+    btn.addEventListener('click', () => {
+      const row = btn.closest('li')!
+      const open = row.dataset.open === 'true'
+      row.dataset.open = open ? 'false' : 'true'
+      btn.setAttribute('aria-expanded', String(!open))
+    })
+  }
+
+  // 实时刷新(REQ-015):拉最新快照 → 打补丁;失败或过期 → 滞后横幅
+  const STALE_MS = 15 * 60_000
+  // 文案随 site.lang,由构建期注入的 live-i18n JSON 提供(与服务端渲染同源)
+  const L = JSON.parse(document.getElementById('live-i18n')!.textContent!) as {
+    statusText: Record<string, string>
+    overallText: Record<string, string>
+    reasonText: Record<string, string>
+    liveUpdated: string
+  }
+  const STATUS_TEXT = L.statusText
+  const OVERALL_TEXT = L.overallText
+  const REASON_TEXT = L.reasonText
+  const staleBanner = document.getElementById('stale-banner')!
+  const showStale = () => staleBanner.removeAttribute('hidden')
+  const hideStale = () => staleBanner.setAttribute('hidden', '')
+
+  // §8:超时 5s,失败重试 1 次,再失败才降级
+  async function fetchSnapshot(url: string) {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        const res = await fetch(url, { signal: AbortSignal.timeout(5000), cache: 'no-store' })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        return await res.json()
+      } catch (err) {
+        if (attempt >= 2) throw err
+      }
+    }
+  }
+
+  async function refresh() {
+    const url = document.documentElement.dataset.rawStatus || `${import.meta.env.BASE_URL}api/status.json`
+    try {
+      const snap = await fetchSnapshot(url)
+      // 成功且新鲜则撤横幅(瞬时故障恢复后不能一直挂着,审查缺陷 #6)
+      if (Date.now() - Date.parse(snap.generatedAt) > STALE_MS) showStale()
+      else hideStale()
+      const banner = document.querySelector<HTMLElement>('.banner')
+      if (banner && snap.overall) {
+        banner.dataset.overall = snap.overall
+        const t = banner.querySelector('[data-live="overall-text"]')
+        if (t) t.textContent = OVERALL_TEXT[snap.overall] ?? snap.overall
+      }
+      const lc = document.querySelector('[data-live="last-checked"]')
+      if (lc) lc.textContent = new Date(snap.generatedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      for (const m of snap.monitors ?? []) {
+        const row = document.querySelector<HTMLElement>(`[data-monitor="${CSS.escape(m.id)}"]`)
+        if (!row) continue
+        row.dataset.status = m.status
+        const label = row.querySelector('[data-live="status-text"]')
+        if (label) {
+          const reason = m.status === 'down' && m.reason ? ` · ${REASON_TEXT[m.reason] ?? m.reason}` : ''
+          label.textContent = (STATUS_TEXT[m.status] ?? m.status) + reason
+        }
+      }
+      const note = document.getElementById('refresh-note')
+      if (note) note.textContent = `${L.liveUpdated} ${new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`
+    } catch {
+      showStale() // 拉取失败:保留构建时数据 + 滞后提示(REQ-015 降级)
+    }
+  }
+  refresh()
+  setInterval(refresh, 60_000)
+</script>

@@ -1,0 +1,34 @@
+# 模板代码 CI:类型检查 + 单元测试 + schema 漂移(仅代码改动触发;实例只改 status.config.yml 不会跑)
+name: test
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/**'
+      - 'site/**'
+      - 'scripts/**'
+      - '.github/workflows/test.yml'
+  pull_request:
+    paths:
+      - 'packages/**'
+      - 'site/**'
+      - 'scripts/**'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: Schema drift gate (DESIGN §24-3)
+        run: npm run schema:gen && git diff --exit-code schema/

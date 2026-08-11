@@ -1,0 +1,6 @@
+== TC-023: badge/local-ok.svg ==
+aria-label="local-ok: down"
+fill="#e0343a"
+== badge/overall.svg ==
+aria-label="status: down"
+fill="#e0343a"

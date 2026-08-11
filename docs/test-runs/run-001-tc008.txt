@@ -1,0 +1,10 @@
+== TC-008: 明细裁剪与日汇总保留 ==
+seeded 8 monitors (aged)
+-- 种子后 local-ok 最老行:
+{"t":"2026-07-19T16:15:53.194Z","o":"up","ms":100,"reason":null}
+-- 种子后 2026-07-19(8 天前)日汇总:
+{"date":"2026-07-19","total":288,"up":288,"degraded":0,"down_count":0,"down_minutes":0,"avg_ms":120,"max_ms":480}
+-- check 后最老行(应在 7 天内):
+{"t":"2026-07-25T16:15:53.194Z","o":"up","ms":118,"reason":null}
+-- check 后 2026-07-19 日汇总(应原样保留):
+{"date":"2026-07-19","total":288,"up":288,"degraded":0,"down_count":0,"down_minutes":0,"avg_ms":120,"max_ms":480}

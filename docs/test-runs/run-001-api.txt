@@ -1,0 +1,10 @@
+== TC-021: /api/status.json ==
+monitors: 8 version: 1 overall: operational generatedAt: 2026-07-27T16:10:34.985Z
+== TC-022: feed.xml entries ==
+<title>Local Status (test) — incidents</title>
+<title>[Resolved] Elevated error rates on Local OK</title>
+<link href="http://localhost:4321/incidents/12/"/>
+<title>[Maintenance] Database engine upgrade</title>
+<link href="http://localhost:4321/incidents/9/"/>
+<title>[Resolved] Local OK unreachable (timeout)</title>
+<link href="http://localhost:4321/incidents/7/"/>

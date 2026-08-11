@@ -1,0 +1,266 @@
+@import 'tailwindcss';
+
+/* ---- 主题 token(唯一权威出处;组件禁手写 hex,只用下方语义工具类) ----
+   视觉方向:status.openai.com 观感 —— 中性底色、克制状态色、细边框、无渐变无发光 */
+:root {
+  --t-bg: #ffffff;
+  --t-surface: #ffffff;
+  --t-surface-2: #f8f8f9;
+  --t-ink: #1a1a1e;
+  --t-muted: #6f6f7a;
+  --t-faint: #a3a3ad;
+  --t-line: #ebebee;
+  --t-line-strong: #d8d8de;
+  --t-ok: #27a56a;
+  --t-warn: #b26a09;
+  --t-warn-bar: #f2b23e;
+  --t-down: #e66458;
+  --t-maint: #5e6ad2;
+  --t-cell-empty: #e9e9ed;
+  --t-banner-ink: #ffffff;
+  --t-tint-down: #fef5f4;
+  --t-tint-maint: #f4f5fc;
+  --t-tint-warn: #fdf8ee;
+  color-scheme: light;
+}
+[data-theme='dark'] {
+  --t-bg: #0b0b0d;
+  --t-surface: #121215;
+  --t-surface-2: #18181c;
+  --t-ink: #ededf0;
+  --t-muted: #9d9da7;
+  --t-faint: #62626c;
+  --t-line: #222227;
+  --t-line-strong: #333339;
+  --t-ok: #34ad7b; /* dataviz 校验:暗色带 L0.48–0.67 内且对比 ≥3:1 */
+  --t-warn: #dfa445;
+  --t-warn-bar: #dfa445;
+  --t-down: #ef7261;
+  --t-maint: #7d88e0;
+  --t-cell-empty: #26262c;
+  --t-banner-ink: #0b0b0d;
+  --t-tint-down: #251716;
+  --t-tint-maint: #171927;
+  --t-tint-warn: #251d10;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-page: var(--t-bg);
+  --color-surface: var(--t-surface);
+  --color-surface-2: var(--t-surface-2);
+  --color-ink: var(--t-ink);
+  --color-muted: var(--t-muted);
+  --color-faint: var(--t-faint);
+  --color-line: var(--t-line);
+  --color-line-strong: var(--t-line-strong);
+  --color-ok: var(--t-ok);
+  --color-warn: var(--t-warn);
+  --color-warn-bar: var(--t-warn-bar);
+  --color-down: var(--t-down);
+  --color-maint: var(--t-maint);
+  --color-cell-empty: var(--t-cell-empty);
+  --color-banner-ink: var(--t-banner-ink);
+  --color-tint-down: var(--t-tint-down);
+  --color-tint-maint: var(--t-tint-maint);
+  --color-tint-warn: var(--t-tint-warn);
+  --font-sans:
+    ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, 'Helvetica Neue',
+    Arial, 'PingFang SC', 'Noto Sans SC', sans-serif;
+}
+
+html {
+  background: var(--t-bg);
+  color: var(--t-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+body {
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+/* 大标题负字距紧行高(VIS-012) */
+.type-title {
+  font-size: clamp(1.375rem, 3.5vw, 1.625rem);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+.type-section {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.type-caption {
+  font-size: 0.75rem;
+  color: var(--t-muted);
+}
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 状态点/状态文字:由 data-status 驱动,live 刷新只改属性 */
+.status-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  flex: none;
+  background: var(--t-faint);
+}
+[data-status='operational'] .status-dot { background: var(--t-ok); }
+[data-status='degraded'] .status-dot { background: var(--t-warn-bar); }
+[data-status='down'] .status-dot { background: var(--t-down); }
+[data-status='maintenance'] .status-dot { background: var(--t-maint); }
+.status-label { color: var(--t-muted); }
+[data-status='operational'] .status-label { color: var(--t-ok); }
+[data-status='degraded'] .status-label { color: var(--t-warn); }
+[data-status='down'] .status-label { color: var(--t-down); }
+[data-status='maintenance'] .status-label { color: var(--t-maint); }
+
+/* 状态 hero:无底色,彩点承载状态色(简约方向,替代实底横幅) */
+.hero-dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 9999px;
+  flex: none;
+  background: var(--t-faint);
+}
+.banner[data-overall='operational'] .hero-dot { background: var(--t-ok); }
+.banner[data-overall='degraded'] .hero-dot { background: var(--t-warn-bar); }
+.banner[data-overall='down'] .hero-dot { background: var(--t-down); }
+.banner[data-overall='maintenance'] .hero-dot { background: var(--t-maint); }
+
+/* 30 天色条:等宽格子铺满整行 */
+.bar-cell {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 1.6rem;
+  border-radius: 2px;
+  background: var(--t-cell-empty);
+  position: relative;
+}
+.bar-cell[data-color='green'] { background: var(--t-ok); }
+.bar-cell[data-color='yellow'] { background: var(--t-warn-bar); }
+.bar-cell[data-color='red'] { background: var(--t-down); }
+.bar-cell[data-color='blue'] { background: var(--t-maint); }
+.bar-cell {
+  transition: transform 120ms ease-out, filter 120ms ease-out;
+}
+.bar-cell:hover {
+  transform: scaleY(1.12);
+  filter: brightness(1.08);
+}
+
+/* 色条悬停浮层:卡片式,淡入淡出 + 图标(JS 定位,单实例) */
+#bar-tip {
+  position: fixed;
+  z-index: 50;
+  min-width: 10.5rem;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 150ms ease-out, transform 150ms ease-out;
+  background: var(--t-surface);
+  border: 1px solid var(--t-line);
+  border-radius: 12px;
+  padding: 0.625rem 0.875rem;
+  box-shadow:
+    0 12px 32px rgb(0 0 0 / 0.1),
+    0 2px 8px rgb(0 0 0 / 0.05);
+}
+[data-theme='dark'] #bar-tip {
+  box-shadow:
+    0 12px 32px rgb(0 0 0 / 0.55),
+    0 2px 8px rgb(0 0 0 / 0.35);
+}
+#bar-tip.show { opacity: 1; transform: translateY(0); }
+#bar-tip .tip-date {
+  font-size: 0.75rem;
+  color: var(--t-muted);
+}
+#bar-tip .tip-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.375rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+#bar-tip .tip-ico { display: none; width: 1rem; height: 1rem; flex: none; }
+#bar-tip[data-tone='green'] .tip-ico[data-ico='green'] { display: block; color: var(--t-ok); }
+#bar-tip[data-tone='yellow'] .tip-ico[data-ico='yellow'] { display: block; color: var(--t-warn-bar); }
+#bar-tip[data-tone='red'] .tip-ico[data-ico='red'] { display: block; color: var(--t-down); }
+#bar-tip[data-tone='blue'] .tip-ico[data-ico='blue'] { display: block; color: var(--t-maint); }
+#bar-tip[data-tone='gray'] .tip-ico[data-ico='gray'] { display: block; color: var(--t-faint); }
+
+/* Recharts 自定义 tooltip */
+.chart-tip {
+  background: var(--t-surface);
+  border: 1px solid var(--t-line);
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+  box-shadow: 0 8px 20px rgb(0 0 0 / 0.08);
+}
+.chart-tip-time { font-size: 0.6875rem; color: var(--t-muted); }
+.chart-tip-value {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 入场动效:轻微上浮淡入,分段错峰(装饰性,reduced-motion 下由末尾规则归零) */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+}
+main > * { animation: rise 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+main > :nth-child(2) { animation-delay: 45ms; }
+main > :nth-child(3) { animation-delay: 90ms; }
+main > :nth-child(4) { animation-delay: 135ms; }
+main > :nth-child(5) { animation-delay: 180ms; }
+main > :nth-child(6) { animation-delay: 225ms; }
+main > :nth-child(7) { animation-delay: 270ms; }
+main > :nth-child(n + 8) { animation-delay: 315ms; }
+
+a, button { transition: color 150ms ease-out, background-color 150ms ease-out, opacity 150ms ease-out; }
+
+/* 超长无空格串(URL/CJK 长题)强制可断行,防横向溢出 */
+.wrap-any { overflow-wrap: anywhere; }
+
+/* 历史条目:左侧彩色竖线(OpenAI 式) */
+.entry-rule {
+  border-left: 3px solid var(--t-line-strong);
+  padding-left: 1rem;
+}
+.entry-rule[data-tone='down'] { border-left-color: var(--t-down); }
+.entry-rule[data-tone='warn'] { border-left-color: var(--t-warn-bar); }
+.entry-rule[data-tone='maint'] { border-left-color: var(--t-maint); }
+.entry-rule[data-tone='ok'] { border-left-color: var(--t-ok); }
+
+/* 行展开面板:grid-rows 过渡(MOTION-002/009,出快于进 MOTION-015) */
+.row-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 160ms ease-out;
+}
+[data-open='true'] .row-panel { grid-template-rows: 1fr; transition-duration: 200ms; }
+.row-panel > div { overflow: hidden; min-height: 0; }
+.row-chevron { transition: rotate 200ms ease-out; color: var(--t-faint); }
+[data-open='true'] .row-chevron { rotate: 90deg; }
+
+/* 焦点样式(A11Y-008) */
+:focus-visible {
+  outline: 2px solid var(--t-maint);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+a { text-underline-offset: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

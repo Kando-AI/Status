@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "site": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "logo": {
+          "type": "string"
+        },
+        "lang": {
+          "default": "en",
+          "type": "string",
+          "enum": [
+            "en",
+            "zh"
+          ]
+        }
+      },
+      "required": [
+        "title"
+      ]
+    },
+    "defaults": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "timeoutMs": {
+          "default": 10000,
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 30000
+        },
+        "degradedThresholdMs": {
+          "default": 3000,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "monitors": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "group": {
+            "default": "Services",
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "default": "http",
+            "type": "string",
+            "enum": [
+              "http",
+              "keyword",
+              "tcp"
+            ]
+          },
+          "target": {
+            "type": "string",
+            "minLength": 1
+          },
+          "keyword": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expectedStatus": {
+            "default": "2xx,3xx",
+            "type": "string"
+          },
+          "headers": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "timeoutMs": {
+            "type": "integer",
+            "minimum": 1000,
+            "maximum": 30000
+          },
+          "degradedThresholdMs": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "name",
+          "target"
+        ]
+      }
+    }
+  },
+  "required": [
+    "site",
+    "monitors"
+  ]
+}

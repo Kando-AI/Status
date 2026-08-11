@@ -1,0 +1,19 @@
+# Status page configuration — the only file you need to edit.
+# Docs: see README. Minimal monitor = name + target; everything else has defaults.
+site:
+  title: Example Status
+  description: Live status for our services.
+
+defaults:
+  timeoutMs: 10000 # probe timeout per attempt
+  degradedThresholdMs: 3000 # slower than this (but responding) = degraded
+
+monitors:
+  - name: Website
+    group: Main
+    target: https://example.com
+  - name: Website (content check)
+    group: Main
+    type: keyword
+    target: https://example.com
+    keyword: Example Domain

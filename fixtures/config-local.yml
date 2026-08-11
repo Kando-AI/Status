@@ -1,0 +1,50 @@
+# 本地测试配置(docs/TEST.md §3;目标 = scripts/mock-target.mjs)
+site:
+  title: Local Status (test)
+  description: Local checker test fixture
+  logo: fixtures/logo.svg
+
+defaults:
+  timeoutMs: 10000
+  degradedThresholdMs: 3000
+
+monitors:
+  - name: Local OK
+    id: local-ok
+    group: Local
+    target: http://localhost:19080/ok
+  - name: Local Error
+    id: local-err
+    group: Local
+    target: http://localhost:19080/error500
+  - name: Local Slow
+    id: local-slow
+    group: Local
+    target: http://localhost:19080/slow
+  - name: Local No Keyword
+    id: local-nokw
+    group: Local
+    type: keyword
+    target: http://localhost:19080/nokeyword
+    keyword: service-healthy
+  - name: Local Keyword OK
+    id: local-kw
+    group: Local
+    type: keyword
+    target: http://localhost:19080/ok
+    keyword: service-healthy
+  - name: Local TCP
+    id: local-tcp
+    group: Local
+    type: tcp
+    target: localhost:19090
+  - name: Local TCP Dead
+    id: local-tcp-dead
+    group: Local
+    type: tcp
+    target: localhost:19099
+  - name: Local Hang
+    id: local-hang
+    group: Local
+    target: http://localhost:19080/hang
+    timeoutMs: 10000
