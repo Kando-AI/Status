@@ -59,6 +59,17 @@ check('Recharts 图表注水并渲染', chart !== null)
 await page.waitForTimeout(1200) // 等 Area 入场动画(400ms)与懒加载分块完成
 const curveVisible = await page.locator('.recharts-area-curve').first().isVisible().catch(() => false)
 check('图表曲线可见', curveVisible)
+// 纵轴刻度必须完整可读(四位数 ms 曾被 YAxis 宽度裁切,"1300ms" 显示成 "300ms")
+const axisOk = await page.evaluate(() => {
+  const svg = document.querySelector('.recharts-surface')
+  if (!svg) return { ok: false, detail: 'no chart' }
+  const left = svg.getBoundingClientRect().x
+  const clipped = [...svg.querySelectorAll('text')]
+    .map((t) => ({ s: t.textContent, x: t.getBoundingClientRect().x }))
+    .filter((t) => t.x < left - 0.5)
+  return { ok: clipped.length === 0, detail: clipped.map((c) => c.s).join(',') }
+})
+check('纵轴刻度无裁切', axisOk.ok, axisOk.detail)
 await page.screenshot({ path: `${OUT}/home-light-expanded.png`, fullPage: true })
 
 // 实时刷新脚本已跑(footer note)

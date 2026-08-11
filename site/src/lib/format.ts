@@ -52,6 +52,14 @@ export function fmtDuration(minutes: number, lang: Lang = 'en'): string {
   return m ? `${h} ${u.h} ${m} ${u.min}` : `${h} ${u.h}`
 }
 
+/**
+ * 响应时间紧凑格式:<1000 用 ms,≥1000 换算秒(1279 → 1.28 s)。
+ * 四位数 ms 标签会超出图表纵轴宽度被裁切(截断后 "1300ms" 读作 "300ms"),故统一收窄。
+ */
+export function fmtMs(ms: number): string {
+  return ms < 1000 ? `${Math.round(ms)} ms` : `${(ms / 1000).toFixed(ms < 10_000 ? 2 : 1)} s`
+}
+
 /** 展示前清洗 Issue 正文:剥 HTML 注释与 ```yaml 元数据围栏(模板脚手架不给访客看) */
 export function cleanIssueBody(body: string): string {
   return body

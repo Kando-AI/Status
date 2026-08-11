@@ -1,7 +1,7 @@
 ---
 import type { CheckRecord, SnapshotMonitor } from '@butus/schema'
 import type { SummaryApi } from '@butus/schema'
-import { fmtDay } from '../lib/format'
+import { fmtDay, fmtMs } from '../lib/format'
 import type { Lang, Strings } from '../lib/i18n'
 import ResponseChart from './ResponseChart.tsx'
 
@@ -77,7 +77,7 @@ const detailFor = (d: SummaryApi['monitors'][number]['days'][number]) =>
         <div class="mb-1.5 flex items-baseline justify-between">
           <span class="text-[0.75rem] font-medium text-muted">{s.respTitle}</span>
           {points.length > 1 && (
-            <span class="tnum text-[0.75rem] font-medium text-muted">{s.avgWord} {avg} ms · {s.maxWord} {max} ms</span>
+            <span class="tnum text-[0.75rem] font-medium text-muted">{s.avgWord} {fmtMs(avg)} · {s.maxWord} {fmtMs(max)}</span>
           )}
         </div>
         {
