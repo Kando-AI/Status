@@ -1,19 +1,74 @@
-# Status page configuration — the only file you need to edit.
-# Docs: see README. Minimal monitor = name + target; everything else has defaults.
+# Kando 平台状态页 —— 唯一需要编辑的文件。
+#
+# **只探公网可达的东西。** kando-infra 的 services.tf 里只有三个服务有 subdomain
+# （llm→api / account / admin），context、memory、knowledge 只在 Service Connect
+# 命名空间内可达 —— GitHub Actions 在外网探不到它们，也**不该**为了探测给内容的
+# 唯一事实源开一个公网入口。
+#
+# 所以内部依赖走**间接断言**：llm 的 /healthz 自带 `context_reachable`，account 的
+# 自带 `db`。这两个是它们自己每次探到的真实结果，比从外面猜更准。
+# memory 与 knowledge 目前**没有任何公网信号**，如实不列 —— 列一个探不到的东西
+# 然后永远显示红色，比不列更糟。
+
 site:
-  title: Example Status
-  description: Live status for our services.
+  title: Kando 状态
+  description: Kando 平台各服务的实时可用性。
+  lang: zh
 
 defaults:
-  timeoutMs: 10000 # probe timeout per attempt
-  degradedThresholdMs: 3000 # slower than this (but responding) = degraded
+  timeoutMs: 10000
+  # 香港区 ECS + GitHub Actions runner 跨洋，基线 RTT 本就不低；
+  # 3s 会让正常波动天天报黄，这里放宽到 5s
+  degradedThresholdMs: 5000
 
 monitors:
-  - name: Website
-    group: Main
-    target: https://example.com
-  - name: Website (content check)
-    group: Main
+  # `id` 显式给死:它是历史数据的主键 —— 中文名派生不出唯一 id,而且改个
+  # 显示名不该让 30 天的可用率归零。
+  # ── 对外入口：用户与管理员真正会打到的三个 ──────────────────────
+  - id: llm-api
+    name: 对话 API
+    group: 对外入口
     type: keyword
-    target: https://example.com
-    keyword: Example Domain
+    target: https://api.kandoai.cn/healthz
+    keyword: '"status":"ok"'
+
+  - id: account
+    name: 账号服务
+    group: 对外入口
+    type: keyword
+    target: https://account.kandoai.cn/healthz
+    keyword: '"status":"ok"'
+
+  - id: admin
+    name: 管理后台
+    group: 对外入口
+    type: keyword
+    target: https://admin.kandoai.cn/healthz
+    keyword: '"status":"ok"'
+
+  # ── 内部依赖：没有公网入口，靠上游服务自己报的探测结果断言 ──────────
+  - id: context
+    name: 内容服务（经对话 API 探测）
+    group: 内部依赖
+    type: keyword
+    target: https://api.kandoai.cn/healthz
+    # 内容是提示词 / 技能书 / 工具声明的唯一事实源。它挂了模型不会报错，
+    # 只会安静地少一段上下文 —— 所以这一条比 HTTP 200 重要得多。
+    keyword: '"context_reachable":true'
+
+  - id: postgres
+    name: 主数据库（经账号服务探测）
+    group: 内部依赖
+    type: keyword
+    target: https://account.kandoai.cn/healthz
+    keyword: '"db":"ok"'
+
+  # ── 管理面的 MCP 入口：本地 Agent 靠它接进来 ────────────────────
+  - id: mcp
+    name: MCP 接入
+    group: 内部依赖
+    # 无凭证时**必须**是 401。返回 200 反而说明出事了 —— 要么鉴权没生效，
+    # 要么请求被 SPA 兜底接走拿到了一份 index.html（这个坑真踩过）。
+    type: http
+    target: https://admin.kandoai.cn/mcp/
+    expectedStatus: '401'
