@@ -21,6 +21,16 @@
       "down_minutes": 0,
       "avg_ms": 730,
       "max_ms": 989
+    },
+    {
+      "date": "2026-08-13",
+      "total": 1,
+      "up": 1,
+      "degraded": 0,
+      "down_count": 0,
+      "down_minutes": 0,
+      "avg_ms": 776,
+      "max_ms": 776
     }
   ]
 }
