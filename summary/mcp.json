@@ -24,13 +24,13 @@
     },
     {
       "date": "2026-08-13",
-      "total": 10,
-      "up": 10,
+      "total": 11,
+      "up": 11,
       "degraded": 0,
       "down_count": 0,
       "down_minutes": 0,
-      "avg_ms": 874,
-      "max_ms": 1008
+      "avg_ms": 904,
+      "max_ms": 1203
     }
   ]
 }
